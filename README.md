@@ -15,7 +15,7 @@ Currently using timed trigger.
 2. Mentioned coins are checked for availability on ByBit
 3. GPT does a sentiment analysis of the individual articles cointaining the available coins. Results in a rating between 0.0 - 10.0
 4. If rating is to sell, current portfolio is checked for containing the coin and sold if true.
-5. If rating is to buy, GPT does rating analysis of Moving Averages, RSI and MACD. If comined results evolves to buy, x amount of coin is bought. Amount is calculated as a percentage of the max set variable buying percentage. Buying allocation is calculated from the overall ratings, thus the AI's overall certainty. 
+5. If rating is to buy, 24 hour price data is fetched from Bybit, and GPT does rating analysis of Moving Averages, RSI and MACD. If combined results evolves to buy, x amount of coin is bought. Amount is calculated as a percentage of the max set variable buying percentage. Buying allocation is calculated from the overall ratings, thus the AI's overall certainty. 
 
 # Bot Differences
 
