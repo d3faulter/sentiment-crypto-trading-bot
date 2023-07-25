@@ -25,3 +25,6 @@ Currently using timed trigger.
 
 # Host on server (constant uptime)
 With few to no changes, bot can be hosted on a server, although adding another trigger might be a good idea to limit API calls e.g. when a new article is uploaded in CryptoPanic.
+
+# Further DEV
+I will integrate the option to inform the user of all trades thorugh a messaging channel (Slack or MS Team)
