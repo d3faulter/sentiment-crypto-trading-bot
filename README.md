@@ -8,7 +8,7 @@ Currently using timed trigger.
 1. Change the cron timer to suit your intervals. 
 2a. Create a ".env" file in root with your api keys and secret
 2b. After setting up the functions app, create a new application setting under "Configuration" in the Azure dashboard, and add your credentials as
-"CRYPTOPANIC_API_KEY", "BYBIT_API_SECRET" and "BYBIT_API_KEY".
+"CRYPTOPANIC_API_KEY", "BYBIT_API_SECRET", "BYBIT_API_KEY" and "OPENAI_API_KEY".
 
 
 # Bot Differences
