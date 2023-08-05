@@ -28,6 +28,7 @@ module.exports = async function (context, myTimer) {
 async function fetchNews() {
     const allNews = [];
     
+    // Response is paginated, so we need to loop through all pages
     try {
         for (let page = 1; page <= 5; page++) {
             const response = await axios.get('https://cryptopanic.com/api/v1/posts/', {
@@ -47,7 +48,7 @@ async function fetchNews() {
     }
 }
 
-// Gemmer coins fra nyheds response
+// Save coins from news response
 function extractCoinSymbolsFromNews(news) {
     const coinSymbols = [];
 
@@ -62,10 +63,8 @@ function extractCoinSymbolsFromNews(news) {
     return coinSymbols;
 }
 
-
-// Fetch all tickers from ByBit
-
-async function fetchAvailableCoins() {
+// Check if coins in coinSymbols are available on ByBit and return the available ones
+async function fetchAvailableCoins(coinSymbols) {
     const availableCoins = [];
 
     try {
@@ -90,9 +89,8 @@ async function fetchAvailableCoins() {
     return availableCoins;
 }
 
-
-
-// Fetch 24 hour ticker data
+// Fetch 24 hour ticker data (should only be done if coin is assessed as either buy or sell)
+// Currently checks all coins, but should only check the ones that are assessed as either buy or sell
 async function fetch24HourData(availableCoins) {
     const data = {};
 
