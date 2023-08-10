@@ -6,6 +6,8 @@
     "start": "func start",
     "test": "echo \"No tests yet...\""
   },
-  "dependencies": {},
-  "devDependencies": {}
+  "dependencies": {
+    "bybit-api": "^3.7.1",
+    "dotenv": "^16.3.1"
+  }
 }
