@@ -29,7 +29,6 @@ const REPUTABLE_SOURCES = [
     'dailycoin.com',
 ];
 
-
 const client = new RestClientV5({
     key: process.env.BYBIT_API_KEY,
     secret: process.env.BYBIT_API_SECRET,
@@ -146,10 +145,13 @@ async function analyzeSentiment(coinNews) {
 
     for (const article of coinNews) {
         try {
-            // 1. Extract Sentiment from the Headline
-            const response = await axios.post('https://api.openai.com/v1/engines/davinci/completions', {
-                prompt: `You are a master at sentiment analysis of news in relation to the stock and crypto market. You know exactly how a stock or coin will move due to a news article. Please analyze the sentiment of this headline: "${article.title}". Rate it from 0 (very negative) to 10 (very positive).`,
-                max_tokens: 5
+            // 1. Extract Sentiment from the Headline using the chat format
+            const response = await axios.post('https://api.openai.com/v1/chat/completions', {
+                model: "gpt-3.5-turbo",
+                messages: [
+                    { "role": "system", "content": "You are a helpful assistant." },
+                    { "role": "user", "content": `Analyze the sentiment of this headline: "${article.title}". Rate it from 0 (very negative) to 10 (very positive).` }
+                ]
             }, {
                 headers: {
                     'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
@@ -157,11 +159,10 @@ async function analyzeSentiment(coinNews) {
                 }
             });
 
-            let score = parseFloat(response.data.choices[0].text.trim());
+            let score = parseFloat(response.data.choices[0].message.content.trim());
 
             // 2. Consider the News Source Reputation
-            const reputableSources = REPUTABLE_SOURCES;
-            const reputationMultiplier = reputableSources.includes(article.domain) ? 1.5 : 1;
+            const reputationMultiplier = REPUTABLE_SOURCES.includes(article.domain) ? 1.5 : 1;
             score *= reputationMultiplier;
 
             // 3. Factor in Votes or Reactions
@@ -181,6 +182,7 @@ async function analyzeSentiment(coinNews) {
         } catch (error) {
             console.error(`Failed to analyze sentiment for ${article.title}: ${error}`);
         }
+        console.log(`Analyzed sentiment for ${article.title}`);
     }
 
     // Calculate average scores and determine sentiment for each coin
@@ -194,6 +196,10 @@ async function analyzeSentiment(coinNews) {
 
     return sentiments;
 }
+
+
+
+
 
 
 
