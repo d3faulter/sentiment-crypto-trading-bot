@@ -1,6 +1,6 @@
 # sentiment-crypto-trading-bot [not finished]
 
-Script for serverless Azure Functions script using API's to: Perform AI sentiment analysis of news headlines, rating the potential up- and downside and performing SPOT trades based on current portfolio.
+Script for serverless Azure Functions script using API's to: Perform AI analysis of news headlines, rating the sentiment and performing SPOT trades based on current portfolio, sentiment- and technical analaysis rating.
 
 Currently using timed trigger.
 
