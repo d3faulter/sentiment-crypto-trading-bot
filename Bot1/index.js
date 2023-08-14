@@ -2,137 +2,153 @@ const axios = require('axios');
 const { RestClientV5 } = require('bybit-api');
 require('dotenv').config({ path: '../.env' });
 
+// News Sources to consider as reputable. Add or remove sources as needed.
+const REPUTABLE_SOURCES = [
+    'cryptoslate.com',
+    'newsbtc.com',
+    'finbold.com',
+    'cointelegraph.com',
+    'coindesk.com',
+    'cryptopotato.com',
+    'cryptonews.com',
+    'cryptobriefing.com',
+    'cryptodaily.co.uk',
+    'cryptonewsz.com',
+    'bitcoinist.com',
+    'ambcrypto.com',
+    'dailyhodl.com',
+    'bitcoin.com',
+    'fxstreet.com',
+    'investing.com',
+    'seekingalpha.com',
+    'coingape.com',
+    'cryptobriefing.com',
+    'cryptoslate.com',
+    'cryptonews.com',
+    'benzinga.com',
+    'dailycoin.com',
+];
+
+
 const client = new RestClientV5({
-    apiKey: process.env.BYBIT_API_KEY, 
-    apiSecret: process.env.BYBIT_API_SECRET,
+    key: process.env.BYBIT_API_KEY,
+    secret: process.env.BYBIT_API_SECRET,
 });
 
-
-// // Timer til at køre
- module.exports = async function (context, myTimer) {
-     var timeStamp = new Date().toISOString();
+module.exports = async function (context, myTimer) {
+    const timeStamp = new Date().toISOString();
     
-     if (myTimer.isPastDue)
-     {
+    if (myTimer.isPastDue) {
         context.log('JavaScript is running late!');
-     }
-     context.log('JavaScript timer trigger function ran!', timeStamp);   
-   
-    const news = await fetchNews();
-    const coinSymbolsFromNews = extractCoinSymbolsFromNews(news);
-    context.log(coinSymbolsFromNews);
+    }
+    context.log('JavaScript timer trigger function ran!', timeStamp);
 
-    const availableCoins = await fetchAvailableCoins();
-    const commonCoins = coinSymbolsFromNews.filter(symbol => availableCoins.includes(symbol));
-    context.log(commonCoins);
+    try {
+        const news = await fetchNews();
+        const coinSymbolsFromNews = extractCoinSymbolsFromNews(news);
+        const availableCoins = await fetchAvailableCoins();
+        const relevantNews = getRelevantCoinNews(coinSymbolsFromNews, availableCoins, news);
+       
+        // context.log(coinSymbolsFromNews); // Very long terminal output if uncommented
+       // context.log(relevantNews);
 
-    const coinData = await fetch24HourData(commonCoins);
-    context.log(coinData);
- };
+       const allRelevantNews = [].concat(...Object.values(relevantNews));
+       const sentiments = await analyzeSentiment(allRelevantNews);
+       console.log(sentiments);
+        // context.log(sentiments);
 
+    } catch (error) {
+        context.log('Error in main function:', error.message);
+    }
+};
 
-// Fetch news
 async function fetchNews() {
     const allNews = [];
+    const baseURL = 'https://cryptopanic.com/api/v1/posts/';
 
-    // Response is paginated, so we need to loop through all pages
-    try {
-        for (let page = 1; page <= 5; page++) {
-            const response = await axios.get('https://cryptopanic.com/api/v1/posts/', {
+    for (let page = 1; page <= 5; page++) {
+        try {
+            const response = await axios.get(baseURL, {
                 params: {
                     auth_token: process.env.CRYPTOPANIC_API_KEY,
                     kind: 'news',
                     page: page
                 },
             });
-            allNews.push(...response.data.results);
-        }
-        console.log(`Fetched: ${allNews.length} articles`);
-        return allNews;
 
-    } catch (error) {
-        console.error(`Failed to fetch news: ${error}`);
-        return null;
+            if (response.data && response.data.results) {
+                allNews.push(...response.data.results);
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
+        } catch (error) {
+            console.error(`Failed to fetch news on page ${page}: ${error.message}`);
+        }
     }
+
+    console.log(`Fetched: ${allNews.length} articles. Extracting coin symbols...`);
+    return allNews;
 }
 
-// Save coins from news response
-function extractCoinSymbolsFromNews(News) { // Should be allNews?
-    const coinSymbols = [];
+function extractCoinSymbolsFromNews(allNews) {
+    const coinSymbols = new Set();
+
+    allNews.forEach(article => {
+        if (Array.isArray(article.currencies)) {
+            article.currencies.forEach(currency => coinSymbols.add(currency.code));
+        }
+    });
+
+    console.log(`Extracted ${coinSymbols.size} coins from news articles. Fetching available coins on ByBit...`);
+    return [...coinSymbols];
+}
+
+async function fetchAvailableCoins() {
+    const bybitCoins = new Set();
 
     try {
-        for (const article of News) {
-            // Check if article.currencies is defined and is an array
-            if (Array.isArray(article.currencies)) {
-                for (const currency of article.currencies) {
-                    if (!coinSymbols.includes(currency.code))  {
-                        coinSymbols.push(currency.code);
-                    }
-                }
-            }
-        }
-        console.log(`Extracted ${coinSymbols.length} coins from news articles`);
-        return coinSymbols;
-    } catch (error) {
-        console.error(`Failed to extract coins from news: ${error}`);
-    }
-}
+        const response = await client.get('v5/market/tickers', { category: 'spot' });
 
-
-// Check if coins in coinSymbols are available on ByBit and return the available ones
-async function fetchAvailableCoins(coinSymbols) {
-    const availableCoins = [];
-
-    try {
-        const response = await client.get('market/tickers', {
-            category: 'spot',
-        });
-
-        console.log(response);
-*        if (response.retCode === 0) {
-            const tickers = response.result.list;
-
-            for (const ticker of tickers) {
-                const symbol = ticker.symbol.split('USDT')[0];  // Split the symbol on 'USDT' to get the coin symbol
-                if (!availableCoins.includes(symbol)) {
-                    availableCoins.push(symbol);
-                }
-            }
+        if (response.retCode === 0 && response.result && response.result.list) {
+            response.result.list.forEach(ticker => {
+                const symbol = ticker.symbol.split('USDT')[0];
+                bybitCoins.add(symbol);
+            });
         }
     } catch (error) {
-        console.error(`Failed to fetch available coins: ${error}`);
+        console.error(`Failed to fetch available coins: ${error.message}`);
     }
 
-    console.log(`Found ${availableCoins.length} coins available on ByBit`);
-    return availableCoins;
+    console.log(`Found ${bybitCoins.size} coins available on ByBit. Matching with news...`);
+    return [...bybitCoins];
 }
 
-// ### Sentiment analysis of news ###
+function getRelevantCoinNews(coinSymbolsFromNews, availableCoins, allNews) {
+    const relevantCoinNews = {};
 
-// Match availableCoins with fetched news to get coinNews, which is an array of the news that are relevant for the available coins
-function matchNewsWithCoins(availableCoins, allNews) {
-    const coinNews = [];
-
-    for (const article of allNews) {
-        for (const currency of article.currencies) {
-            if (availableCoins.includes(currency.code)) {
-                coinNews.push(article);
-            }
+    coinSymbolsFromNews.forEach(symbol => {
+        if (availableCoins.includes(symbol)) {
+            relevantCoinNews[symbol] = allNews.filter(article => {
+                return Array.isArray(article.currencies) && article.currencies.some(currency => currency.code === symbol);
+            });
         }
-    }
-    console.log(coinNews);
-    return coinNews;
+    });
 
+    console.log(`Found ${Object.keys(relevantCoinNews).length} matched coins between news and ByBit. Analyzing sentiment of ${allNews.length} headlines...`);
+    return relevantCoinNews;
 }
 
 // Sentiment analysis of news using OpenAI
+
 async function analyzeSentiment(coinNews) {
     const sentiments = {};
+    const coinScores = {};
 
     for (const article of coinNews) {
         try {
+            // 1. Extract Sentiment from the Headline
             const response = await axios.post('https://api.openai.com/v1/engines/davinci/completions', {
-                prompt: `Analyze the sentiment of this headline: "${article.title}". Rate it from 0 (very negative) to 10 (very positive).`,
+                prompt: `You are a master at sentiment analysis of news in relation to the stock and crypto market. You know exactly how a stock or coin will move due to a news article. Please analyze the sentiment of this headline: "${article.title}". Rate it from 0 (very negative) to 10 (very positive).`,
                 max_tokens: 5
             }, {
                 headers: {
@@ -141,21 +157,44 @@ async function analyzeSentiment(coinNews) {
                 }
             });
 
-            const score = parseFloat(response.data.choices[0].text.trim());
-            if (score >= 8) {
-                sentiments[article.currency.code] = 'buy';
-            } else if (score <= 2) {
-                sentiments[article.currency.code] = 'sell';
-            } else {
-                sentiments[article.currency.code] = 'neutral';
+            let score = parseFloat(response.data.choices[0].text.trim());
+
+            // 2. Consider the News Source Reputation
+            const reputableSources = REPUTABLE_SOURCES;
+            const reputationMultiplier = reputableSources.includes(article.domain) ? 1.5 : 1;
+            score *= reputationMultiplier;
+
+            // 3. Factor in Votes or Reactions
+            if (article.votes && article.votes.positive > 100) {
+                score *= 1.5;
             }
+
+            // Accumulate scores for each currency in the article
+            for (const currency of article.currencies) {
+                if (!coinScores[currency.code]) {
+                    coinScores[currency.code] = { totalScore: 0, count: 0 };
+                }
+                coinScores[currency.code].totalScore += score;
+                coinScores[currency.code].count += 1;
+            }
+
         } catch (error) {
             console.error(`Failed to analyze sentiment for ${article.title}: ${error}`);
         }
     }
 
+    // Calculate average scores and determine sentiment for each coin
+    for (const coin in coinScores) {
+        const averageScore = coinScores[coin].totalScore / coinScores[coin].count;
+        sentiments[coin] = averageScore >= 12 ? 'strong buy' :
+                           averageScore >= 8  ? 'buy' :
+                           averageScore <= 3  ? 'strong sell' :
+                           averageScore <= 5  ? 'sell' : 'neutral';
+    }
+
     return sentiments;
 }
+
 
 
 // Fetch 24 hour ticker data (should only be done if coin is assessed as either buy or sell)
@@ -183,13 +222,7 @@ async function fetch24HourData(sentiments) {
     return data;
 }
 
-
 // Price analysis with EMA's, MACD, RSI and Volume. Evaluated by GPT
-
-
-
-// !!!!!!!!!!!!!!!!!! Add all new functons to timer trigger in the top !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
 
 // Mock context and myTimer objects for local testing
 const mockContext = {
