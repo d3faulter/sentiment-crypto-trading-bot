@@ -54,8 +54,8 @@ module.exports = async function (context, myTimer) {
 
        const allRelevantNews = [].concat(...Object.values(relevantNews));
        const sentiments = await analyzeSentiment(allRelevantNews);
-       console.log(sentiments);
-        // context.log(sentiments);
+    //    console.log(sentiments);
+        context.log(sentiments);
 
     } catch (error) {
         context.log('Error in main function:', error.message);
@@ -66,7 +66,7 @@ async function fetchNews() {
     const allNews = [];
     const baseURL = 'https://cryptopanic.com/api/v1/posts/';
 
-    for (let page = 1; page <= 5; page++) {
+    for (let page = 1; page <= 1; page++) { // remember to change loop back to page 5
         try {
             const response = await axios.get(baseURL, {
                 params: {
@@ -138,11 +138,28 @@ function getRelevantCoinNews(coinSymbolsFromNews, availableCoins, allNews) {
     return relevantCoinNews;
 }
 
-// Sentiment analysis of news using OpenAI
+// Sentiment analysis of news using OpenAI's Davinci model
+
+function printProgressBar(percentage) {
+    const length = 40; // Length of the progress bar
+    const position = Math.floor((percentage / 100) * length);
+    const progressBar = Array(length).fill('-');
+    for (let i = 0; i < position; i++) {
+        progressBar[i] = '=';
+    }
+    process.stdout.clearLine();  // Clear the current line in terminal
+    process.stdout.cursorTo(0);  // Move cursor to the beginning of the line
+    process.stdout.write(`[${progressBar.join('')}] ${percentage.toFixed(2)}%`); // Print the progress bar
+}
 
 async function analyzeSentiment(coinNews) {
     const sentiments = {};
     const coinScores = {};
+
+    const totalArticles = coinNews.length;
+    let processedArticles = 0;
+
+    printProgressBar(0); // Initial progress bar
 
     for (const article of coinNews) {
         try {
@@ -178,10 +195,16 @@ async function analyzeSentiment(coinNews) {
                 coinScores[currency.code].count += 1;
             }
 
+            processedArticles++;
+            const percentage = (processedArticles / totalArticles) * 100;
+            printProgressBar(percentage); // Update progress bar
+
         } catch (error) {
             console.error(`Failed to analyze sentiment for ${article.title}: ${error}`);
         }
     }
+
+    console.log('\n'); // Move to the next line after the progress bar
 
     // Calculate average scores and determine sentiment for each coin
     for (const coin in coinScores) {
@@ -190,12 +213,11 @@ async function analyzeSentiment(coinNews) {
                            averageScore >= 8  ? 'buy' :
                            averageScore <= 3  ? 'strong sell' :
                            averageScore <= 5  ? 'sell' : 'neutral';
+                           console.log(sentiments[coin]);
     }
 
     return sentiments;
 }
-
-
 
 // Fetch 24 hour ticker data (should only be done if coin is assessed as either buy or sell)
 // Currently checks all coins, but should only check the ones that are assessed as either buy or sell -> Change availableCoins to res of above analysis
