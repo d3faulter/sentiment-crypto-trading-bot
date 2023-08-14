@@ -148,7 +148,7 @@ async function analyzeSentiment(coinNews) {
         try {
             // 1. Extract Sentiment from the Headline
             const response = await axios.post('https://api.openai.com/v1/engines/davinci/completions', {
-                prompt: `You are a master at sentiment analysis of news in relation to the stock and crypto market. You know exactly how a stock or coin will move due to a news article. Please analyze the sentiment of this headline: "${article.title}". Rate it from 0 (very negative) to 10 (very positive).`,
+                prompt: `You are a master at sentiment analysis of news in relation to the stock and crypto market. You know exactly how a stock or coin will move due to the impact of a news article. Please analyze the sentiment of this headline: "${article.title}". Rate it from 0 (very negative) to 10 (very positive).`,
                 max_tokens: 5
             }, {
                 headers: {
