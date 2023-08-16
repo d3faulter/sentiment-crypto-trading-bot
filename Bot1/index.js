@@ -150,10 +150,10 @@ async function analyzeSentiment(coinNews) {
         try {
             // 1. Extract Sentiment from the Headline using the chat format
             const response = await axios.post('https://api.openai.com/v1/chat/completions', {
-                model: "gpt-3.5-turbo",
+                model: "gpt-4",
                 messages: [
-                    { "role": "system", "content": "You are a helpful assistant." },
-                    { "role": "user", "content": `Analyze the sentiment of this headline: "${article.title}". Rate it from 0 (very negative) to 10 (very positive).` }
+                    { "role": "system", "content": "You are a master at sentiment analysis related to news about the stock or crypto market." },
+                    { "role": "user", "content": `Analyze the sentiment of this crypto headline, and consider how it will impact the crypto (if it even will): "${article.title}". Rate it from 0 (very negative) to 10 (very positive).` }
                 ]
             }, {
                 headers: {
