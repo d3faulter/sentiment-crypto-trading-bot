@@ -65,7 +65,7 @@ async function fetchNews() {
     const allNews = [];
     const baseURL = 'https://cryptopanic.com/api/v1/posts/';
 
-    for (let page = 1; page <= 5; page++) {
+    for (let page = 1; page <= 1; page++) {// Remember to change back to 1 page
         try {
             const response = await axios.get(baseURL, {
                 params: {
@@ -143,6 +143,9 @@ async function analyzeSentiment(coinNews) {
     const sentiments = {};
     const coinScores = {};
 
+    const totalArticles = coinNews.length;
+    let processedArticles = 0;
+
     for (const article of coinNews) {
         try {
             // 1. Extract Sentiment from the Headline using the chat format
@@ -182,7 +185,10 @@ async function analyzeSentiment(coinNews) {
         } catch (error) {
             console.error(`Failed to analyze sentiment for ${article.title}: ${error}`);
         }
-        console.log(`Analyzed sentiment for ${article.title}`);
+
+        // Update and display the progress bar
+        processedArticles++;
+        displayProgressBar(processedArticles, totalArticles);
     }
 
     // Calculate average scores and determine sentiment for each coin
@@ -196,6 +202,21 @@ async function analyzeSentiment(coinNews) {
 
     return sentiments;
 }
+
+function displayProgressBar(current, total) {
+    const width = 40; // Width of the progress bar in characters
+    const progress = Math.round((current / total) * width);
+
+    const progressBar = `[${'='.repeat(progress)}${' '.repeat(width - progress)}] ${Math.round((current / total) * 100)}%`;
+    process.stdout.clearLine();
+    process.stdout.cursorTo(0);
+    process.stdout.write(progressBar);
+
+    if (current === total) {
+        console.log(); // Move to the next line after completion
+    }
+}
+
 
 
 
