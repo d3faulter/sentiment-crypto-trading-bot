@@ -56,16 +56,21 @@ module.exports = async function (context, myTimer) {
              context.log(article.title + ' ' + article.domain);
         });
 
-        const sentiments = await analyzeSentiment(allRelevantNews);
-        context.log(sentiments);
+        // Comment or uncomment the following lines to test the functions individually
+        // From here to ...
 
-//       const sentiments = {
-//        'BTC': 'strong buy',
-//        'ETH': 'buy',
-//        'ADA': 'sell',
-//        'XRP': 'strong sell',
-//        'DOT': 'strong buy'
-//    };
+        // const sentiments = await analyzeSentiment(allRelevantNews);
+        // context.log(sentiments);
+
+      const sentiments = {
+       'BTC': 'strong buy',
+       'ETH': 'buy',
+       'ADA': 'sell',
+       'XRP': 'strong sell',
+       'DOT': 'strong buy'
+   };
+
+   // ... Here.
 
       const coinData = await fetch7DayKlineData(sentiments);
         context.log(coinData);
@@ -75,7 +80,7 @@ module.exports = async function (context, myTimer) {
         for (const symbol in coinData) {
             coinScores[symbol] = calculateTechnicalIndicators(coinData[symbol]);
         }
-        context.log(coinScores);
+        context.log('The scores from the 7 day hourly analysis is:', coinScores);
 
     } catch (error) {
         context.log('Error in main function:', error.message);
@@ -88,7 +93,7 @@ async function fetchNews() {
     const allNews = [];
     const baseURL = 'https://cryptopanic.com/api/v1/posts/';
 
-    for (let page = 1; page <= 4; page++) { // remember to change loop back to page 5
+    for (let page = 1; page <= 1; page++) { // remember to change loop back to page 5
         try {
             const response = await axios.get(baseURL, {
                 params: {
@@ -168,7 +173,7 @@ function getRelevantCoinNews(coinSymbolsFromNews, availableCoins, allNews) {
 }
 
 
-// Sentiment analysis of news using OpenAI's Davinci model
+// Sentiment analysis of news using OpenAI's Davinci model (faster than 3.5-turbo and 4)
 
 // Progress bar to track sentiment analysis
 function printProgressBar(percentage) {
@@ -250,7 +255,7 @@ async function analyzeSentiment(coinNews) {
     return sentiments;
 }
 
-// Fetch 24 hour ticker data for all non-neutral coins
+// Fetch 7 day hourly ticker data for all non-neutral coins
 
 async function fetch7DayKlineData(sentiments) {
     const data = {};
@@ -290,7 +295,6 @@ function calculateTechnicalIndicators(klineData) {
     const close = klineData.map(data => parseFloat(data[4]));
     const high = klineData.map(data => parseFloat(data[2]));
     const low = klineData.map(data => parseFloat(data[3]));
-    const volume = klineData.map(data => parseFloat(data[5]));
 
     // Calculate RSI
     const rsi = ti.RSI.calculate({ values: close, period: 14 });
@@ -327,10 +331,36 @@ function calculateTechnicalIndicators(klineData) {
     });
     const currentStochastic = stochastic[stochastic.length - 1];
 
-    // Here, you can add logic to evaluate the calculated indicators and return an overall score.
-    // For simplicity, I'll return a random score between 1 and 10.
-    return Math.floor(Math.random() * 10) + 1;
+    // Score calculation
+    let score = 0;
+
+    // RSI
+    if (currentRSI < 30) score += 2; // Oversold
+    else if (currentRSI > 70) score -= 2; // Overbought
+
+    // MACD
+    if (currentMACD.MACD > currentMACD.signal) score += 2; // Bullish
+    else if (currentMACD.MACD < currentMACD.signal) score -= 2; // Bearish
+
+    // EMA
+    if (currentEMA50 > currentEMA200) score += 2; // Bullish crossover
+    else if (currentEMA50 < currentEMA200) score -= 2; // Bearish crossover
+
+    // Bollinger Bands
+    if (close[close.length - 1] > currentBB.upper) score -= 2; // Above upper band
+    else if (close[close.length - 1] < currentBB.lower) score += 2; // Below lower band
+
+    // Stochastic Oscillator
+    if (currentStochastic.k < 20 && currentStochastic.d < 20) score += 2; // Oversold
+    else if (currentStochastic.k > 80 && currentStochastic.d > 80) score -= 2; // Overbought
+
+    // Normalize the score to a scale of 1 to 10
+    score = Math.min(Math.max(score, -10), 10); // Clamp the score between -10 and 10
+    score = (score + 10) / 2; // Normalize to 0-10 scale
+
+    return score;
 }
+
 
 // Mock context and myTimer objects for local testing
 const mockContext = {
