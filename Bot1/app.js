@@ -131,6 +131,12 @@ function extractCoinSymbolsFromNews(allNews) {
 }
 
 async function fetchAvailableCoins() {
+    const bybitCoins = await fetchBybitCoins(); 
+    console.log(`Found ${bybitCoins.length} coins available on ByBit. Matching with news...`);
+    return bybitCoins;
+}
+
+async function fetchBybitCoins() {
     const bybitCoins = new Set();
 
     try {
@@ -146,7 +152,6 @@ async function fetchAvailableCoins() {
         console.error(`Failed to fetch available coins: ${error.message}`);
     }
 
-    console.log(`Found ${bybitCoins.size} coins available on ByBit. Matching with news...`);
     return [...bybitCoins];
 }
 
